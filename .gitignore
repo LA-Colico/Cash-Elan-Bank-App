@@ -1,0 +1,94 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# Environment files - NEVER COMMIT
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+functions/.env
+functions/.env.local
+functions/.env.*.local
+
+# typescript
+*.tsbuildinfo
+
+# Firebase - NEVER COMMIT THESE
+functions/lib/
+functions/node_modules/
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Sensitive files - NEVER COMMIT
+google-services.json
+GoogleService-Info.plist
+*.keystore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Claude Code files - DO NOT UPLOAD TO GITHUB
+.claude/
+.swarm/
+.hive-mind/
+claude-flow.config.json
+CLAUDE.md
+.claude.json
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Build outputs
+build/
+dist/
+
+# Temporary files
+tmp/
+temp/

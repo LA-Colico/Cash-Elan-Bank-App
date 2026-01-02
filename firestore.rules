@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is verified
+    function isVerified() {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isVerified == true;
+    }
+
+    // Check if user account is active
+    function isActive() {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    // Prevent modification of critical fields
+    function cannotModifyCriticalFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'balance',
+        'accountNumber',
+        'cardNumber',
+        'cardExpiry',
+        'createdAt',
+        'isVerified',
+        'isActive',
+        'canTransfer',
+        'canWithdraw',
+        'dailyTransferLimit',
+        'monthlyTransferLimit'
+      ]);
+    }
+
+    // ========================================
+    // USERS COLLECTION
+    // ========================================
+
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isOwner(userId);
+
+      // Users can only update non-critical fields of their own profile
+      allow update: if isOwner(userId) && cannotModifyCriticalFields();
+
+      // Cannot create or delete user documents directly (handled by backend)
+      allow create, delete: if false;
+
+      // User info subcollection (backward compatibility)
+      match /userInfo/{docId} {
+        allow read: if isOwner(userId);
+        // Cannot write from client (only backend can write)
+        allow write: if false;
+      }
+
+      // Recipients subcollection
+      match /recipients/{recipientId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isVerified() && isActive();
+        allow delete: if isOwner(userId);
+      }
+
+      // Billers subcollection
+      match /billers/{billerId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isVerified() && isActive();
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // ========================================
+    // TRANSACTIONS COLLECTION
+    // ========================================
+
+    match /transactions/{transactionId} {
+      // Users can read their own transactions
+      allow read: if isAuthenticated() &&
+                   (resource.data.senderId == request.auth.uid ||
+                    resource.data.recipientId == request.auth.uid ||
+                    resource.data.userId == request.auth.uid);
+
+      // Only backend can create, update, or delete transactions
+      allow create, update, delete: if false;
+    }
+
+    // ========================================
+    // OTPS COLLECTION
+    // ========================================
+
+    match /otps/{otpId} {
+      // Users can read their own OTPs
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Cannot write OTPs from client (only backend can write)
+      allow write: if false;
+    }
+
+    // ========================================
+    // RATE LIMITS COLLECTION
+    // ========================================
+
+    match /rate_limits/{limitId} {
+      // Users can read their own rate limit status
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Cannot write rate limits from client (only backend can write)
+      allow write: if false;
+    }
+
+    // ========================================
+    // SMS LOGS COLLECTION
+    // ========================================
+
+    match /sms_logs/{logId} {
+      // Users can read their own SMS logs
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Cannot write logs from client (only backend can write)
+      allow write: if false;
+    }
+
+    // ========================================
+    // EMAIL LOGS COLLECTION
+    // ========================================
+
+    match /email_logs/{logId} {
+      // Users can read their own email logs
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Cannot write logs from client (only backend can write)
+      allow write: if false;
+    }
+
+    // ========================================
+    // ARCHIVED TRANSACTIONS COLLECTION
+    // ========================================
+
+    match /archived_transactions/{transactionId} {
+      // Users can read their own archived transactions
+      allow read: if isAuthenticated() &&
+                   (resource.data.senderId == request.auth.uid ||
+                    resource.data.recipientId == request.auth.uid ||
+                    resource.data.userId == request.auth.uid);
+
+      // Cannot write archived transactions from client (only backend can write)
+      allow write: if false;
+    }
+
+    // ========================================
+    // DEFAULT DENY ALL
+    // ========================================
+
+    // Deny access to all other collections by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
